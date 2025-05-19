@@ -27,7 +27,7 @@ npm install
 3. Torne o script executável e registre como CLI:
 
 ```bash
-chmod +x index.js
+chmod +x index.js   // em ambientes linux
 npm link
 ```
 
@@ -38,7 +38,7 @@ npm link
 Navegue até a raiz do repositório Git onde deseja usar o script e execute:
 
 ```bash
-integration-cli
+integration-dev-cli
 ```
 
 ## ✅ O que o script faz
@@ -58,7 +58,7 @@ integration-cli
 git checkout feature/ajuste-api
 
 # Rode a CLI
-integration-cli
+integration-dev-cli
 ```
 
 Esse comando criará e fará push de uma nova branch chamada `integration_feature/ajuste-api` com o último commit.
