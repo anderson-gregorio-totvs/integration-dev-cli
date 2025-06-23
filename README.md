@@ -1,12 +1,11 @@
 # 🛠️ Integration Development CLI
 
-Este é um utilitário de linha de comando (CLI) em Node.js que automatiza o processo de criação de uma branch de integração a partir da branch development, aplicando o último commit de uma outra branch usando git cherry-pick.
+CLI para aplicar cherry-pick de múltiplos commits diretamente na branch de desenvolvimento (`development` ou `develop`).
 
 ## 📦 Requisitos
 
 - Node.js v14 ou superior
 - Git instalado e configurado
-- A branch `development` deve existir e estar atualizada com o repositório remoto
 - Ter permissões de push para o repositório Git
 
 ## 🚀 Instalação
@@ -27,7 +26,7 @@ npm install
 3. Torne o script executável e registre como CLI:
 
 ```bash
-chmod +x index.js   // em ambientes linux
+chmod +x index.js   // este comando deve ser executado somente em ambientes linux
 npm link
 ```
 
@@ -43,28 +42,30 @@ integration-dev-cli
 
 ## ✅ O que o script faz
 
-1. Detecta a branch atual (ex: feature/nova-funcionalidade)
-2. Armazena o ID do último commit da branch atual
-3. Muda para a branch `development`
-4. Executa `git pull --rebase` para atualizar a branch development
-5. Cria uma nova branch chamada `integration_feature/nova-funcionalidade` a partir de `development`
-6. Executa `git cherry-pick` do último commit salvo
-7. Realiza `git push` da nova branch para o repositório remoto
+1. Detectar a branch de destino (`development` ou `develop`) no remoto.
+2. Perguntar a quantidade de commits recentes da sua branch atual você deseja realizar o cherry-pick.
+3. Trocar automaticamente para a branch de destino (`development` ou `develop`).
+4. Executa `git pull --rebase` para atualizar.
+5. Executa `git cherry-pick` dos commit' selecionados.
+6. Realizar o push da branch de desenvolvimento.
 
-## 🧪 Exemplo de Fluxo
+## 🧪 Exemplo de execução
 
 ```bash
-# Estando na branch feature/ajuste-api
-git checkout feature/ajuste-api
-
-# Rode a CLI
-integration-dev-cli
+📍 Branch de destino: development
+📌 Branch atual: feature/login
+Quantos últimos commits deseja cherry-pickar? 2
+🆔 Commits selecionados para cherry-pick:
+abc1234 - feat(button): implmenta ....
+def5678 - fix(button): ajusta ....
+🔄 Feito checkout para a branch development
+📥 Pull com rebase realizado
+🍒 Cherry-pickando commit: abc1234
+🍒 Cherry-pickando commit: def5678
+🚀 Push realizado para origin/development
 ```
-
-Esse comando criará e fará push de uma nova branch chamada `integration_feature/ajuste-api` com o último commit.
 
 ## 🧯 Possíveis Erros
 
 - ❌ "error: could not apply...": conflitos no cherry-pick. Resolva e finalize o cherry-pick com git cherry-pick --continue.
-- ❌ "branch `development` not found": certifique-se de que sua branch development existe localmente e remotamente.
 - ❌ Permissões de push negadas: verifique suas credenciais de acesso ao repositório.

@@ -2,49 +2,130 @@
 
 const { Command } = require("commander");
 const simpleGit = require("simple-git");
+const readline = require("readline");
 
 const git = simpleGit();
 const program = new Command();
 
+const askQuestion = (query) => {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  return new Promise((resolve) =>
+    rl.question(query, (ans) => {
+      rl.close();
+      resolve(ans.trim());
+    })
+  );
+};
+
 program
   .name("integration-dev-cli")
   .description(
-    "CLI para criar branches de integração com cherry-pick do último commit na development"
+    "CLI para realizar cherry-pick de múltiplos commits na branch de desenvolvimento (development ou develop)"
   )
   .action(async () => {
     try {
-      // 1. Recupera o nome da branch atual
+      //#region Verificar branch de desenvolvimento remoto
+
+      const branches = await git.branch(["-r"]);
+      const remoteBranches = branches.all;
+
+      let targetBranch = null;
+      if (remoteBranches.includes("origin/development")) {
+        targetBranch = "development";
+      } else if (remoteBranches.includes("origin/develop")) {
+        targetBranch = "develop";
+      } else {
+        console.error(
+          "❌ Nenhuma branch 'development' ou 'develop' encontrada no remoto."
+        );
+        process.exit(1);
+      }
+
+      console.log(`📍 Branch de destino: ${targetBranch}`);
+
+      //#endregion
+
+      //#region Perguntar quantidade de commits
+
+      const answer = await askQuestion(
+        "Qual a quantidde commits deseja realizar cherry-pickar? (default: 1) "
+      );
+      const numberOfCommits = answer === "" ? 1 : parseInt(answer);
+
+      if (isNaN(numberOfCommits) || numberOfCommits <= 0) {
+        console.error("❌ Quantidade inválida de commits.");
+        process.exit(1);
+      }
+
+      //#endregion
+
+      //#region Obter branch atual
+
       const status = await git.status();
       const currentBranch = status.current;
-      console.log(`📍 Branch atual: ${currentBranch}`);
+      console.log(`📌 Branch atual: ${currentBranch}`);
 
-      // 2. Recupera o ID do último commit na branch atual
-      const log = await git.log({ maxCount: 1 });
-      const lastCommitHash = log.latest.hash;
-      console.log(`🆔 Último commit: ${lastCommitHash}`);
+      //#endregion
 
-      // 3. Muda para a branch development
-      await git.checkout("development");
-      console.log("🔄 Feito checkout para a branch development");
+      //#region Recuperar os últimos X commits
 
-      // 4. Atualiza a branch development com pull --rebase
-      await git.pull("origin", "development", { "--rebase": "true" });
-      console.log("📥 Pull com rebase feito na branch development");
+      const log = await git.log({ maxCount: numberOfCommits });
+      const commitsToPick = log.all.reverse(); // Ordem cronológica
 
-      // 5. Cria a nova branch com prefixo "integration_"
-      const newBranch = `integration_${currentBranch}`;
-      await git.checkoutBranch(newBranch, "development");
-      console.log(`🌿 Nova branch criada: ${newBranch}`);
+      console.log("\n🆔 Commits selecionados para cherry-pick:\n");
+      commitsToPick.forEach((commit, index) => {
+        console.log(`${index + 1}. ${commit.hash} - ${commit.message}`);
+      });
 
-      // 6. Cherry-pick do commit salvo anteriormente
-      await git.raw(["cherry-pick", lastCommitHash]);
-      console.log(`✅ Cherry-pick do commit ${lastCommitHash} realizado`);
+      //#endregion
 
-      // 7. Push da nova branch
-      await git.push("origin", newBranch);
-      console.log(`🚀 Push realizado para origin/${newBranch}`);
+      //#region Checkout na branch de destino
+
+      await git.checkout(targetBranch);
+      console.log(`\n🔄 Feito checkout para a branch ${targetBranch}`);
+
+      //#endregion
+
+      //#region Pull com rebase
+
+      await git.pull("origin", targetBranch, { "--rebase": "true" });
+      console.log("📥 Pull com rebase realizado\n");
+
+      //#endregion
+
+      //#region Cherry-pick dos commits
+
+      for (const commit of commitsToPick) {
+        console.log(`🍒 Cherry-pick commit: ${commit.hash}`);
+        await git.raw(["cherry-pick", commit.hash]);
+      }
+
+      //#endregion
+
+      //#region Confirmação antes do push
+
+      const confirmPush = await askQuestion(
+        "\n❓ Deseja fazer o push para o remoto? (Y/n) (default: yes): "
+      );
+
+      if (
+        confirmPush === "" ||
+        confirmPush.toLowerCase() === "y" ||
+        confirmPush.toLowerCase() === "yes"
+      ) {
+        await git.push("origin", targetBranch);
+        console.log(`🚀 Push realizado para origin/${targetBranch}`);
+      } else {
+        console.log("🚫 Push cancelado pelo usuário.");
+      }
+
+      //#endregion
     } catch (error) {
-      console.error("❌ Erro durante a execução da CLI:", error.message);
+      console.error("\n❌ Erro durante a execução da CLI:", error.message);
     }
   });
 
